@@ -336,10 +336,21 @@
       (timed-chk n rest ...))]))
 
 ;; Have been run for 60 seconds
-(timed-chk
-  60
-  (run* (e) (typeo '() e '() '(Pi (α : (Type lz)) α)))
-  '()
+#;(timed-chk
+   60
+   (run* (e) (typeo '() e '() '(Pi (α : (Type lz)) α)))
+   '()
 
-  (run* (e gamma) (typeo '() e gamma '(Pi (α : (Type lz)) α)))
-  '())
+   (run* (e gamma) (typeo '() e gamma '(Pi (α : (Type lz)) α)))
+   '())
+
+;; Prove False under some assumptions
+#;(timed-chk
+   60
+   (run* (e) (typeo '((f . (Pi (A : (Type lz))
+                               (Pi (B : (Type lz))
+                                   (Pi (_ : A) B))))
+                      (z . Nat)
+                      (s . (Pi (n : Nat) Nat))
+                      (Nat . (Type lz))) e '() '(Pi (α : (Type lz)) α)))
+   '())
