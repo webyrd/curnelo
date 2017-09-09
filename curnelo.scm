@@ -247,4 +247,40 @@
                                     a))
                                 (Type lz)) gamma q)))
 
- )
+ ;; Check False as a concept
+ (run 1 (q) (type-checko '() `(Pi (α : (Type lz)) α) '() q))
+ '(((Type lz))))
+
+;; Prove False
+(define (timeout n default th)
+  (define ch (make-channel))
+  (define t (thread (lambda () (channel-put ch (th)))))
+  (if (sync/timeout 60 ch)
+      (channel-get ch)
+      (begin
+        (kill-thread t)
+        default)))
+
+(define-syntax timed-test
+  (syntax-rules ()
+    [(_ n e v)
+     (chk
+      (timeout n v (lambda () e))
+      v)]))
+
+(define-syntax timed-chk
+  (syntax-rules ()
+    [(_ n) (void)]
+    [(_ n e v rest ...)
+     (chk*
+      (timed-test n e v)
+      (timed-chk n rest ...))]))
+
+;; Have been run for 60 seconds
+(timed-chk
+  60
+  (run* (e) (typeo '() e '() '(Pi (α : (Type lz)) α)))
+  '()
+
+  (run* (e gamma) (typeo '() e gamma '(Pi (α : (Type lz)) α)))
+  '())
