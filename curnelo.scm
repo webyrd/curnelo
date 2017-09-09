@@ -1,5 +1,9 @@
-(load "mk/mk.scm")
-(load "mk/test-check.scm")
+#lang racket/base
+(require
+ "mk/mk.scm"
+ rnrs/base-6
+ rnrs/lists-6
+ chk)
 
 (define deltao
   (lambda (x gamma term)
@@ -42,45 +46,41 @@
                      gamma^)
            (evalo gamma^ ebody e^)))])))
 
-(test "1"
-  (run* (q)
-    (evalo '() '((lambda (x : (Type)) x) (Type)) q))
-  '(((Type))))
+(chk
+ (run* (q)
+       (evalo '() '((lambda (x : (Type)) x) (Type)) q))
+ '(((Type)))
 
-(test "2"
-  (run* (q)
-    (evalo '() 'x q))
-  '((x)))
+ (run* (q)
+       (evalo '() 'x q))
+ '((x))
 
-(test "3"
-  (run* (q)
-    (evalo '()
-           '((lambda (f : (Pi (x : (Type)) (Type))) f)
-             (lambda (x : (Type)) x))
-           q))
-  '(((closure () (x : (Type)) x))))
+ (run* (q)
+       (evalo '()
+              '((lambda (f : (Pi (x : (Type)) (Type))) f)
+                (lambda (x : (Type)) x))
+              q))
+ '(((closure () (x : (Type)) x)))
 
-(test "4"
-  (run 5 (q)
-    (evalo '() q 'x))
-  '((x)
-    (((lambda (_.0 : _.1) x) (Type))
-     (=/= ((_.0 x))))
-    (((lambda (_.0 : _.1) _.0) x)
-     (sym _.0))
-    (((lambda (_.0 : _.1) x) _.2)
-     (=/= ((_.0 x))) (sym _.2))
-    (((lambda (_.0 : _.1) x) (Pi (_.2 : (Type)) (Type)))
-     (=/= ((_.0 x))))))
+ (run 5 (q)
+      (evalo '() q 'x))
+ '((x)
+   (((lambda (_.0 : _.1) x) (Type))
+    (=/= ((_.0 x))))
+   (((lambda (_.0 : _.1) _.0) x)
+    (sym _.0))
+   (((lambda (_.0 : _.1) x) _.2)
+    (=/= ((_.0 x))) (sym _.2))
+   (((lambda (_.0 : _.1) x) (Pi (_.2 : (Type)) (Type)))
+    (=/= ((_.0 x)))))
 
-(test "5"
-  (run 5 (q)
-    (evalo '() q q))
-  '(((Type))
-    (_.0 (sym _.0))
-    ((Pi (_.0 : (Type)) (Type)))
-    ((Pi (_.0 : _.1) (Type)) (sym _.1))
-    ((Pi (_.0 : (Type)) _.0) (sym _.0))))
+ (run 5 (q)
+      (evalo '() q q))
+ '(((Type))
+   (_.0 (sym _.0))
+   ((Pi (_.0 : (Type)) (Type)))
+   ((Pi (_.0 : _.1) (Type)) (sym _.1))
+   ((Pi (_.0 : (Type)) _.0) (sym _.0))))
 
 (define typeo
   (lambda (Gamma e gamma A)
@@ -121,31 +121,26 @@
         [(=/= x y) (lookupo x gamma^ term)]))))
 
 
-(test "a"
-  (run* (q)
-    (typeo '() '(Type) '() q))
-  '(((Type))))
+(chk
+ (run* (q)
+       (typeo '() '(Type) '() q))
+ '(((Type)))
 
-(test "b"
-  (run* (q)
-    (typeo '() 'z '() q))
-  '())
+ (run* (q)
+       (typeo '() 'z '() q))
+ '()
 
-(test "c"
-  (run* (q)
-    (typeo '((z . (Type))) 'z '() q))
-  '(((Type))))
+ (run* (q)
+       (typeo '((z . (Type))) 'z '() q))
+ '(((Type)))
 
-(test "e"
-  (run* (q) (typeo '() '(lambda (x : (Type)) x) '() q))
-  '(((Pi (x : (Type)) (Type)))))
+ (run* (q) (typeo '() '(lambda (x : (Type)) x) '() q))
+ '(((Pi (x : (Type)) (Type))))
 
-(test "f"
-  (run* (q)
-    (typeo '() '((lambda (x : (Type)) (Type)) (Type)) '() q))
-  '(((Type))))
+ (run* (q)
+       (typeo '() '((lambda (x : (Type)) (Type)) (Type)) '() q))
+ '(((Type)))
 
-(test "g"
-  (run* (q)
-    (typeo '() '((lambda (x : (Type)) x) (Type)) '() q))
-  '(((Type))))
+ (run* (q)
+       (typeo '() '((lambda (x : (Type)) x) (Type)) '() q))
+ '(((Type))))

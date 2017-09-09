@@ -1,3 +1,23 @@
+#lang racket
+(require
+ rnrs/base-6
+ rnrs/records/syntactic-6
+ rnrs/io/ports-6
+ rnrs/lists-6
+ rnrs/sorting-6
+ rnrs/arithmetic/fixnums-6
+ (only-in
+  racket/fixnum
+  [fxrshift fxsra]
+  [fxlshift fxsll]
+  fx=)
+ (only-in
+  rnrs/arithmetic/fixnums-6
+  fx<?
+  fx=?
+  fxeven?))
+(provide (all-defined-out))
+(define (gensym? x) (and (symbol? x) (not (symbol-interned? x))))
 ; Old trie implementation, due to Abdulaziz Ghuloum. Used for substitution
 ; and constraint store.
 
@@ -1624,4 +1644,3 @@
       ,drop-N-b/c-dup-var ,drop-D-b/c-Y-or-N ,drop-T-b/c-Y-and-N
       ,move-T-to-D-b/c-t2-atom ,split-t-move-to-d-b/c-pair
       ,drop-from-D-b/c-T ,drop-t-b/c-t2-occurs-t1)))
-
