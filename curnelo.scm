@@ -3,6 +3,7 @@
  "mk/mk.scm"
  rnrs/base-6
  rnrs/lists-6
+ "chko.rkt"
  chk)
 
 (define (varo e)
@@ -81,46 +82,41 @@
                        gamma^)
              (evalo gamma^ ebody e^)))]))))
 
-(chk
- (run* (q)
-       (evalo '() '() '((lambda (x : (Type (lsucc lz))) x) (Type lz)) q))
- '(((Type lz)))
+(chko
+ #:out (q) '(Type lz)
+ #:!c
+ (evalo '() '() '((lambda (x : (Type (lsucc lz))) x) (Type lz)) q)
 
- (run* (q)
-       (evalo '() '() 'x q))
- '((x))
+ #:out (q) 'x
+ #:!c
+ (evalo '() '() 'x q)
 
- (run* (q)
-       (evalo '() '()
-              '((lambda (f : (Pi (x : (Type lz)) (Type lz))) f)
-                (lambda (x : (Type lz)) x))
-              q))
- '(((closure () (x : (Type lz)) x)))
+ #:out (q) '(closure () (x : (Type lz)) x)
+ #:!c
+ (evalo '() '()
+        '((lambda (f : (Pi (x : (Type lz)) (Type lz))) f)
+          (lambda (x : (Type lz)) x))
+        q)
 
- (run 5 (q)
-      (evalo '() '() q 'x))
- '((x)
-   (((lambda (_.0 : _.1) x) (Type _.2))
-    (=/= ((_.0 x))))
-   (((lambda (_.0 : _.1) _.0) x)
-    (=/= ((_.0 Pi)) ((_.0 Type)) ((_.0 closure)) ((_.0 lambda)))
-    (sym _.0))
-   (((lambda (_.0 : _.1) x) _.2)
-    (=/= ((_.0 x)) ((_.2 Pi)) ((_.2 Type)) ((_.2 closure)) ((_.2 lambda)))
-    (sym _.2))
-   (((lambda (_.0 : _.1) x) (lambda (_.2 : _.3) (Type _.4))) (=/= ((_.0 x)))))
+ #:= (q)
+ '(x
+   ((lambda (_.0 : _.1) x) (Type _.2))
+   ((lambda (_.0 : _.1) _.0) x)
+   ((lambda (_.0 : _.1) x) _.2)
+   ((lambda (_.0 : _.1) x) (lambda (_.2 : _.3) (Type _.4))))
+ #:n 5
+ #:!c
+ (evalo '() '() q 'x)
 
- (run 5 (q)
-      (evalo '() '() q q))
- '(((Type _.0))
-   (_.0 (=/= ((_.0 Pi)) ((_.0 Type)) ((_.0 closure)) ((_.0 lambda))) (sym _.0))
-   ((Pi (_.0 : (Type _.1)) (Type _.2)))
-   ((Pi (_.0 : _.1) (Type _.2))
-    (=/= ((_.1 Pi)) ((_.1 Type)) ((_.1 closure)) ((_.1 lambda)))
-    (sym _.1))
-   ((Pi (_.0 : (Type _.1)) _.0)
-    (=/= ((_.0 Pi)) ((_.0 Type)) ((_.0 closure)) ((_.0 lambda)))
-    (sym _.0))))
+ #:= (q)
+ '((Type _.0)
+   _.0
+   (Pi (_.0 : (Type _.1)) (Type _.2))
+   (Pi (_.0 : _.1) (Type _.2))
+   (Pi (_.0 : (Type _.1)) _.0))
+ #:n 5
+ #:!c
+ (evalo '() '() q q))
 
 ;; Delta := . | Ind(Var : n A Gamma)
 ;; ((Var . (n A Gamma)) . Delta)
@@ -311,46 +307,19 @@
                    e gamma 'Nat))))
 
 ;; Prove False
-(define (timeout n default th)
-  (define ch (make-channel))
-  (define t (thread (lambda () (channel-put ch (th)))))
-  (if (sync/timeout 60 ch)
-      (channel-get ch)
-      (begin
-        (kill-thread t)
-        default)))
-
-(define-syntax timed-test
-  (syntax-rules ()
-    [(_ n e v)
-     (chk
-      (timeout n v (lambda () e))
-      v)]))
-
-(define-syntax timed-chk
-  (syntax-rules ()
-    [(_ n) (void)]
-    [(_ n e v rest ...)
-     (chk*
-      (timed-test n e v)
-      (timed-chk n rest ...))]))
 
 ;; Have been run for 60 seconds
-#;(timed-chk
-   60
-   (run* (e) (typeo '() e '() '(Pi (α : (Type lz)) α)))
-   '()
-
-   (run* (e gamma) (typeo '() e gamma '(Pi (α : (Type lz)) α)))
-   '())
+(chko
+ #:= (e) '((()))
+ #:t 60
+ (typeo '() '() e '() '(Pi (α : (Type lz)) α))
 
 ;; Prove False under some assumptions
-#;(timed-chk
-   60
-   (run* (e) (typeo '((f . (Pi (A : (Type lz))
-                               (Pi (B : (Type lz))
-                                   (Pi (_ : A) B))))
-                      (z . Nat)
-                      (s . (Pi (n : Nat) Nat))
-                      (Nat . (Type lz))) e '() '(Pi (α : (Type lz)) α)))
-   '())
+ #:= (e) '((()))
+ #:t 60
+ (typeo '((f . (Pi (A : (Type lz))
+                   (Pi (B : (Type lz))
+                       (Pi (_ : A) B))))
+          (z . Nat)
+          (s . (Pi (n : Nat) Nat))
+          (Nat . (Type lz))) e '() '(Pi (α : (Type lz)) α)))
