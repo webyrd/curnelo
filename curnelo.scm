@@ -150,7 +150,7 @@
          (ext-envo gamma x x gamma^)
          (typeo Gamma A^ gamma `(Type ,i))
          (typeo Gamma^ body gamma^ B))]
-      [(fresh (e1 e2 A^ B gamma^^ gamma^ x)
+      [(fresh (e1 e2 A^ B gamma^^ gamma^ x) ;; T-App
          ;; I suspect this could use more constraints to allow typeo to return different subgammas
          ;; from type-checko, but I'll sort that out later.
          ;; Unification might just do the right thing
@@ -162,7 +162,7 @@
 
 ;; Need infer/check distinction for algorithmic interpretation.
 (define (type-checko Gamma e gamma A)
-  (fresh (B)
+  (fresh (B) ;; T-Conv
     (typeo Gamma e gamma B)
     (evalo gamma B A)))
 
