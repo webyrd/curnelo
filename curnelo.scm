@@ -5,6 +5,14 @@
  rnrs/lists-6
  chk)
 
+(define (varo e)
+  (conde
+   [(symbolo e)
+    (=/= e 'Type)
+    (=/= e 'closure)
+    (=/= e 'lambda)
+    (=/= e 'Pi)]))
+
 (define deltao
   (lambda (x gamma term)
     (conde
@@ -19,11 +27,35 @@
   (lambda (gamma x e gamma^)
     (== `((,x . ,e) . ,gamma) gamma^)))
 
+;; Universe levels:
+;; lz : Level
+;; lsucc : Level -> Level
+(define (levelo e)
+  (conde
+   [(== 'lz e)]
+   [(fresh (e^)
+      (== `(lsucc ,e^) e)
+      (levelo e^))]))
+
+(define (max-levelo i j k)
+  (conde
+   [(== 'lz i)
+    (== j k)]
+   [(== 'lz j)
+    (== i k)]
+   [(fresh (i^ j^ k^)
+      (== i `(lsucc ,i^))
+      (== j `(lsucc ,j^))
+      (== k `(lsucc ,k^))
+      (max-levelo i^ j^ k^))]))
+
 (define evalo
   (lambda (gamma e e^)
     (conde
-      [(== '(Type) e) (== '(Type) e^)]
-      [(symbolo e) (deltao e gamma e^)]
+      [(fresh (i)
+         (== `(Type ,i) e)
+         (== `(Type ,i) e^))]
+      [(varo e) (deltao e gamma e^)]
       [(fresh (A A^ B B^ gamma^ x)
          (== `(Pi (,x : ,A) ,B) e)
          (ext-envo gamma x x gamma^)
@@ -48,8 +80,8 @@
 
 (chk
  (run* (q)
-       (evalo '() '((lambda (x : (Type)) x) (Type)) q))
- '(((Type)))
+       (evalo '() '((lambda (x : (Type (lsucc lz))) x) (Type lz)) q))
+ '(((Type lz)))
 
  (run* (q)
        (evalo '() 'x q))
@@ -57,51 +89,66 @@
 
  (run* (q)
        (evalo '()
-              '((lambda (f : (Pi (x : (Type)) (Type))) f)
-                (lambda (x : (Type)) x))
+              '((lambda (f : (Pi (x : (Type lz)) (Type lz))) f)
+                (lambda (x : (Type lz)) x))
               q))
- '(((closure () (x : (Type)) x)))
+ '(((closure () (x : (Type lz)) x)))
 
  (run 5 (q)
       (evalo '() q 'x))
  '((x)
-   (((lambda (_.0 : _.1) x) (Type))
+   (((lambda (_.0 : _.1) x) (Type _.2))
     (=/= ((_.0 x))))
    (((lambda (_.0 : _.1) _.0) x)
+    (=/= ((_.0 Pi)) ((_.0 Type)) ((_.0 closure)) ((_.0 lambda)))
     (sym _.0))
    (((lambda (_.0 : _.1) x) _.2)
-    (=/= ((_.0 x))) (sym _.2))
-   (((lambda (_.0 : _.1) x) (Pi (_.2 : (Type)) (Type)))
-    (=/= ((_.0 x)))))
+    (=/= ((_.0 x)) ((_.2 Pi)) ((_.2 Type)) ((_.2 closure)) ((_.2 lambda)))
+    (sym _.2))
+   (((lambda (_.0 : _.1) x) (lambda (_.2 : _.3) (Type _.4))) (=/= ((_.0 x)))))
 
  (run 5 (q)
       (evalo '() q q))
- '(((Type))
-   (_.0 (sym _.0))
-   ((Pi (_.0 : (Type)) (Type)))
-   ((Pi (_.0 : _.1) (Type)) (sym _.1))
-   ((Pi (_.0 : (Type)) _.0) (sym _.0))))
+ '(((Type _.0))
+   (_.0 (=/= ((_.0 Pi)) ((_.0 Type)) ((_.0 closure)) ((_.0 lambda))) (sym _.0))
+   ((Pi (_.0 : (Type _.1)) (Type _.2)))
+   ((Pi (_.0 : _.1) (Type _.2))
+    (=/= ((_.1 Pi)) ((_.1 Type)) ((_.1 closure)) ((_.1 lambda)))
+    (sym _.1))
+   ((Pi (_.0 : (Type _.1)) _.0)
+    (=/= ((_.0 Pi)) ((_.0 Type)) ((_.0 closure)) ((_.0 lambda)))
+    (sym _.0))))
 
 (define typeo
   (lambda (Gamma e gamma A)
     (conde
-      [(== '(Type) e) ;; T-Type
-       (== '(Type) A)]
-      [(symbolo e) ;; T-Var
+     [(fresh (i)
+        (== `(Type ,i) e) ;; T-Type
+        (levelo i)
+        (== `(Type (lsucc ,i)) A))]
+      [(varo e) ;; T-Var
        (lookupo e Gamma A)]
-      [(fresh (x A^ B Gamma^ gamma^) ;; T-Pi
+      [(fresh (x A^ B Gamma^ gamma^ i) ;; T-Pi-Prop
          (== `(Pi (,x : ,A^) ,B) e)
          (ext-envo Gamma x A^ Gamma^)
          (ext-envo gamma x x gamma^)
-         (== A '(Type))
-         (typeo Gamma A^ gamma '(Type))
-         (typeo Gamma^ B gamma^ '(Type)))]
-      [(fresh (x A^ body B Gamma^ gamma^)
+         (== A `(Type lz))
+         (typeo Gamma A^ gamma `(Type ,i))
+         (typeo Gamma^ B gamma^ `(Type lz)))]
+      [(fresh (x A^ B Gamma^ gamma^ i j k) ;; T-Pi-Type
+         (== `(Pi (,x : ,A^) ,B) e)
+         (ext-envo Gamma x A^ Gamma^)
+         (ext-envo gamma x x gamma^)
+         (== A `(Type ,k))
+         (max-levelo i j k)
+         (typeo Gamma A^ gamma `(Type ,i))
+         (typeo Gamma^ B gamma^ `(Type ,j)))]
+      [(fresh (x A^ body B Gamma^ gamma^ i) ;; T-Lam
          (== `(lambda (,x : ,A^) ,body) e)
          (== `(Pi (,x : ,A^) ,B) A)
          (ext-envo Gamma x A^ Gamma^)
          (ext-envo gamma x x gamma^)
-         (typeo Gamma A^ gamma '(Type))
+         (typeo Gamma A^ gamma `(Type ,i))
          (typeo Gamma^ body gamma^ B))]
       [(fresh (e1 e2 A^ B gamma^^ gamma^ x)
          ;; I suspect this could use more constraints to allow typeo to return different subgammas
@@ -130,70 +177,74 @@
 (require racket/function)
 (chk
  (run* (q)
-       (typeo '() '(Type) '() q))
- '(((Type)))
+       (typeo '() '(Type lz) '() q))
+ '(((Type (lsucc lz))))
 
  (run* (q)
        (typeo '() 'z '() q))
  '()
 
  (run* (q)
-       (typeo '((z . (Type))) 'z '() q))
- '(((Type)))
+       (typeo '((z . (Type lz))) 'z '() q))
+ '(((Type lz)))
 
- (run* (q) (typeo '() '(lambda (x : (Type)) x) '() q))
- '(((Pi (x : (Type)) (Type))))
-
- (run* (q gamma)
-       (typeo '() '((lambda (x : (Type)) (Type)) (Type)) gamma q))
- '((((Type)
-     ((x . (Type)) . _.0))))
+ (run* (q) (typeo '() '(lambda (x : (Type lz)) x) '() q))
+ '(((Pi (x : (Type lz)) (Type lz))))
 
  (run* (q gamma)
-       (typeo '() '((lambda (x : (Type)) x) (Type)) gamma q))
- '((((Type)
-     ((x . (Type)) . _.0))))
+       (typeo '() '((lambda (x : (Type lz)) (Type lz)) (Type lz)) gamma q))
+ '()
+
+ (run* (q gamma)
+       (typeo '() '((lambda (x : (Type (lsucc lz))) (Type lz)) (Type lz)) gamma q))
+ '((((Type (lsucc lz))
+     ((x . (Type lz)) . _.0))))
+
+ (run* (q gamma)
+       (typeo '() '((lambda (x : (Type (lsucc lz))) x) (Type lz)) gamma q))
+ '((((Type (lsucc lz))
+     ((x . (Type lz)) . _.0))))
 
  (run* (q)
-       (typeo '() '(lambda (A : (Type))
+       (typeo '() '(lambda (A : (Type lz))
                       (lambda (a : A)
                         a)) '() q))
- '(((Pi (A : (Type))
+ '(((Pi (A : (Type lz))
       (Pi (a : A)
           A))))
 
  ;; Try inferring some types
- #:? (curry member '(((Pi (A : (Type)) (Pi (a : A) A))
-                      (Type) A)))
- (run 2 (q ?1 ?2)
+ #:? (curry member '(((Pi (A : (Type lz)) (Pi (a : A) A))
+                      (Type lz) A)))
+ (run 5 (q ?1 ?2)
       (typeo '() `(lambda (A : ,?1)
                     (lambda (a : ,?2)
                       a)) '() q))
 
  ;; Try inferring some terms
- #:? (curry member '((lambda (A : (Type))
+ #:? (curry member '((lambda (A : (Type lz))
                        (lambda (a : A)
                          a))))
  (run 2 (e)
-      (typeo '() e '() `(Pi (A : (Type)) (Pi (a : A) A))))
+      (typeo '() e '() `(Pi (A : (Type lz)) (Pi (a : A) A))))
 
  ;; Check dependent application
- #:? (curry member '((Pi (a : (Type)) (Type))))
+ #:? (curry member '((Pi (a : (Type lz)) (Type lz))))
  (run 1 (q)
       (fresh (gamma ?1 q1)
              (typeo '() `((lambda (A : ,?1)
                             (lambda (a : A)
                               a))
-                          (Type)) gamma q1)
+                          (Type lz)) gamma q1)
              (evalo gamma q1 q)))
 
  ;; Check conversion
- #:? (curry member '((Pi (a : (Type)) (Type))))
+ #:? (curry member '((Pi (a : (Type lz)) (Type lz))))
  (run 1 (q)
       (fresh (gamma ?1)
              (type-checko '() `((lambda (A : ,?1)
                                   (lambda (a : A)
                                     a))
-                                (Type)) gamma q)))
+                                (Type lz)) gamma q)))
 
  )
