@@ -104,16 +104,20 @@
          (typeo Gamma A^ gamma '(Type))
          (typeo Gamma^ body gamma^ B))]
       [(fresh (e1 e2 A^ B gamma^^ gamma^ x)
-         ;;; TODO FIXME!
          ;; I suspect this could use more constraints to allow typeo to return different subgammas
-         ;; from recursive application, but I'll sort that out later.
+         ;; from type-checko, but I'll sort that out later.
          ;; Unification might just do the right thing
          (== `(,e1 ,e2) e)
          (ext-envo gamma^ x e2 gamma)
-         (typeo Gamma e1 gamma `(Pi (,x : ,A^) ,B))
-         (typeo Gamma e2 gamma A^)
-         (== A B))]
-      )))
+         (type-checko Gamma e2 gamma^ A^)
+         (typeo Gamma e1 gamma^ `(Pi (,x : ,A^) ,B))
+         (== A B))])))
+
+;; Need infer/check distinction for algorithmic interpretation.
+(define (type-checko Gamma e gamma A)
+  (fresh (B)
+    (typeo Gamma e gamma B)
+    (evalo gamma B A)))
 
 (define lookupo
   (lambda (x gamma term)
@@ -182,4 +186,14 @@
                               a))
                           (Type)) gamma q1)
              (evalo gamma q1 q)))
+
+ ;; Check conversion
+ #:? (curry member '((Pi (a : (Type)) (Type))))
+ (run 1 (q)
+      (fresh (gamma ?1)
+             (type-checko '() `((lambda (A : ,?1)
+                                  (lambda (a : A)
+                                    a))
+                                (Type)) gamma q)))
+
  )
