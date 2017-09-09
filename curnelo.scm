@@ -6,9 +6,50 @@
  "chko.rkt"
  chk)
 
+(define (takeo n args o)
+  (conde
+   [(== n 'lz)
+    (== o '())]
+   [(fresh (n^ B rest o^)
+      (== n `(lsucc ,n^))
+      (== args `(,B . ,rest))
+      (== o `(,B . ,o^))
+      (takeo n^ rest o^))]))
+
+(define (dropo n args o)
+  (conde
+   [(== n 'lz)
+    (== args o)]
+   [(fresh (n^ B rest o^)
+      (== n `(lsucc ,n^))
+      (== args `(,B . ,rest))
+      (dropo n^ rest o))]))
+
+(chko
+ #:out (q) '()
+ #:!c
+ (takeo 'lz '(1 2 3) q)
+
+ #:out (q) '(1)
+ #:!c
+ (takeo '(lsucc lz) '(1 2 3) q)
+
+ #:out (q) '(1 2)
+ #:!c
+ (takeo '(lsucc (lsucc lz)) '(1 2 3) q)
+
+ #:out (q) '(1 2 3)
+ #:!c
+ (dropo 'lz '(1 2 3) q)
+
+ #:out (q) '(2 3)
+ #:!c
+ (dropo '(lsucc lz) '(1 2 3) q))
+
 (define (varo e)
   (conde
    [(symbolo e)
+    (=/= e 'elim)
     (=/= e 'Type)
     (=/= e 'closure)
     (=/= e 'lambda)
@@ -28,7 +69,7 @@
   (lambda (gamma x e gamma^)
     (== `((,x . ,e) . ,gamma) gamma^)))
 
-;; Universe levels:
+;; Meta-naturals; used for universe levels and parameters:
 ;; lz : Level
 ;; lsucc : Level -> Level
 (define (levelo e)
@@ -134,6 +175,37 @@
       (=/= x y)
       (ind-lookupo x Delta^ A))]))
 
+(define (ind-entryo x Delta n A Gamma)
+  (conde
+   [(fresh (Delta^)
+      (== `((,x . (,n ,A ,Gamma)) . ,Delta^) Delta))]
+   [(fresh (n^ A^ Gamma^ Delta^ y)
+      (=/= x y)
+      (== `((,y . (,n^ ,A^ ,Gamma^)) . ,Delta^) Delta)
+      (ind-entryo x Delta^ n A Gamma))]))
+
+
+(define (inductiveo Delta A args p i D U)
+  (let inductiveo ([A A]
+                   [D D]
+                   [args args]
+                   [p p]
+                   [i i])
+    (conde
+     [(fresh (T Gamma n)
+             (== A D)
+             (ind-entryo A Delta n T Gamma)
+             (takeo n args p)
+             (dropo n args i))]
+     [(fresh (A^ B args^)
+        (== `(,A^ ,B) A)
+        (== `(,B . args^) args)
+        (inductiveo A^ args D))])))
+
+#;(define (inductive-decomposeo Delta A D p i U)
+  (conde
+   [()]))
+
 ;; Well-formed inductive declarations stub:
 ;; TODO: Strict positivity
 ;; TODO: well-typed types
@@ -187,7 +259,36 @@
            (ext-envo gamma^ x e2 gamma)
            (type-checko Delta Gamma e2 gamma^ A^)
            (typeo Gamma e1 gamma^ `(Pi (,x : ,A^) ,B))
-           (== A B))]))])))
+           (== A B))]
+        #;[(fresh (target motive methods A^ D C argsD motiveA i j Bs)
+           (== `(elim ,target ,motive . ,methods) e)
+
+           (applyo motive indices target A)
+
+           (inductiveo Delta A^ args p i D `(Type ,j))
+           (inductive-decomposeo Delta A^ D parameters indices `(Type ,j))
+
+           (elimableo Delta motiveA parameters indices `(Type ,j) `(Type ,i))
+           (branch-typeso Delta motive p i Bs)
+
+           (typeo Gamma target gamma A^)
+           (typeo Gamma motive gamma motiveA)
+           )]))])))
+
+(define (applyo f args t A)
+  (== (list
+       (for/fold ([f f])
+                ([a args])
+         `(,f ,a))
+       t) A))
+
+(define (branch-typeso Delta motive p i Bs)
+  (conde
+   [(== `())]))
+
+;; Eliminate the type A, whoses parameters are p and indicies are i, from the universe U_f into the
+;; universe U_t
+(define (elimableo Delta A p i U_f U_t))
 
 ;; Need infer/check distinction for algorithmic interpretation.
 (define (type-checko Delta Gamma e gamma A)
