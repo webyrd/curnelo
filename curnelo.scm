@@ -105,9 +105,11 @@
          (typeo Gamma^ body gamma^ B))]
       [(fresh (e1 e2 A^ B gamma^^ gamma^ x)
          ;;; TODO FIXME!
-         ;; Something is wrong with how we do dependency so far.
+         ;; I suspect this could use more constraints to allow typeo to return different subgammas
+         ;; from recursive application, but I'll sort that out later.
+         ;; Unification might just do the right thing
          (== `(,e1 ,e2) e)
-         #;(ext-envo gamma^^ x e2 gamma)
+         (ext-envo gamma^ x e2 gamma)
          (typeo Gamma e1 gamma `(Pi (,x : ,A^) ,B))
          (typeo Gamma e2 gamma A^)
          (== A B))]
@@ -138,13 +140,15 @@
  (run* (q) (typeo '() '(lambda (x : (Type)) x) '() q))
  '(((Pi (x : (Type)) (Type))))
 
- (run* (q)
-       (typeo '() '((lambda (x : (Type)) (Type)) (Type)) '() q))
- '(((Type)))
+ (run* (q gamma)
+       (typeo '() '((lambda (x : (Type)) (Type)) (Type)) gamma q))
+ '((((Type)
+     ((x . (Type)) . _.0))))
 
- (run* (q)
-       (typeo '() '((lambda (x : (Type)) x) (Type)) '() q))
- '(((Type)))
+ (run* (q gamma)
+       (typeo '() '((lambda (x : (Type)) x) (Type)) gamma q))
+ '((((Type)
+     ((x . (Type)) . _.0))))
 
  (run* (q)
        (typeo '() '(lambda (A : (Type))
@@ -158,13 +162,24 @@
  #:? (curry member '(((Pi (A : (Type)) (Pi (a : A) A))
                       (Type) A)))
  (run 2 (q ?1 ?2)
-       (typeo '() `(lambda (A : ,?1)
-                      (lambda (a : ,?2)
-                        a)) '() q))
+      (typeo '() `(lambda (A : ,?1)
+                    (lambda (a : ,?2)
+                      a)) '() q))
 
-;; Try inferring some terms
+ ;; Try inferring some terms
  #:? (curry member '((lambda (A : (Type))
-                        (lambda (a : A)
-                          a))))
+                       (lambda (a : A)
+                         a))))
  (run 2 (e)
-       (typeo '() e '() `(Pi (A : (Type)) (Pi (a : A) A)))))
+      (typeo '() e '() `(Pi (A : (Type)) (Pi (a : A) A))))
+
+ ;; Check dependent application
+ #:? (curry member '((Pi (a : (Type)) (Type))))
+ (run 1 (q)
+      (fresh (gamma ?1 q1)
+             (typeo '() `((lambda (A : ,?1)
+                            (lambda (a : A)
+                              a))
+                          (Type)) gamma q1)
+             (evalo gamma q1 q)))
+ )
