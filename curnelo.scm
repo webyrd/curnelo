@@ -105,10 +105,11 @@
          (typeo Gamma^ body gamma^ B))]
       [(fresh (e1 e2 A^ B gamma^^ gamma^ x)
          ;;; TODO FIXME!
+         ;; Something is wrong with how we do dependency so far.
          (== `(,e1 ,e2) e)
-         (ext-envo gamma^^ x e2 gamma)
-         (typeo Gamma e1 gamma^^ `(Pi (,x : ,A^) ,B))
-         (typeo Gamma e2 gamma^ A^)
+         #;(ext-envo gamma^^ x e2 gamma)
+         (typeo Gamma e1 gamma `(Pi (,x : ,A^) ,B))
+         (typeo Gamma e2 gamma A^)
          (== A B))]
       )))
 
@@ -120,7 +121,7 @@
         [(== x y) (== t term)]
         [(=/= x y) (lookupo x gamma^ term)]))))
 
-
+(require racket/function)
 (chk
  (run* (q)
        (typeo '() '(Type) '() q))
@@ -143,4 +144,27 @@
 
  (run* (q)
        (typeo '() '((lambda (x : (Type)) x) (Type)) '() q))
- '(((Type))))
+ '(((Type)))
+
+ (run* (q)
+       (typeo '() '(lambda (A : (Type))
+                      (lambda (a : A)
+                        a)) '() q))
+ '(((Pi (A : (Type))
+      (Pi (a : A)
+          A))))
+
+ ;; Try inferring some types
+ #:? (curry member '(((Pi (A : (Type)) (Pi (a : A) A))
+                      (Type) A)))
+ (run 2 (q ?1 ?2)
+       (typeo '() `(lambda (A : ,?1)
+                      (lambda (a : ,?2)
+                        a)) '() q))
+
+;; Try inferring some terms
+ #:? (curry member '((lambda (A : (Type))
+                        (lambda (a : A)
+                          a))))
+ (run 2 (e)
+       (typeo '() e '() `(Pi (A : (Type)) (Pi (a : A) A)))))
