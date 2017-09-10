@@ -321,7 +321,7 @@
                      a)) '() q)
 
  ;; Try inferring some types
- #:in #:n 3 #:!c (q ?1 ?2) '((Pi (A : (Type lz)) (Pi (a : A) A)) (Type lz) A)
+ #:in #:n 5 #:!c (q ?1 ?2) '((Pi (A : (Type lz)) (Pi (a : A) A)) (Type lz) A)
  (typeo '() '() `(lambda (A : ,?1)
                    (lambda (a : ,?2)
                      a)) '() q)
@@ -354,13 +354,13 @@
  (type-checko '() '() `(Pi (α : (Type lz)) α) '() q)
 
  ;; Prove me some Nats
- #:subset #:n 5 #:!c (e) '((z) ((s z)))
+ #:subset #:n 5 #:!c (e) '(z (s z))
  (fresh (gamma)
         (typeo '() '((z . Nat) (s . (Pi (x : Nat) Nat)) (Nat . (Type lz)))
                e gamma 'Nat))
 
  ;; Inductive tests
- #:subset #:n 8 #:!c (e) '((z) ((s z)))
+ #:subset #:n 8 #:!c (e) '(z (s z))
  (fresh (gamma)
         (typeo '((Nat . (0 (Type lz)
                            ((z . Nat)
