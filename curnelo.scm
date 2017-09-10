@@ -172,27 +172,101 @@
       (== `((,y . (,n^ ,A^ ,Gamma^)) . ,Delta^) Delta)
       (ind-entryo x Delta^ n A Gamma))]))
 
+(chko
+#:out #:n 1 #:!c (n T Gamma) '((lsucc lz) (Pi (A : (Type lz))
+                                               (Pi (n : Nat)
+                                                   (Type lz)))
+                                           ((nil . (Pi (A : (Type lz))
+                                                       ((Vec A) z)))
+                                            (cons . (Pi (A : (Type lz))
+                                                        (Pi (n : Nat)
+                                                            (Pi (a : A)
+                                                                (Pi (ls : ((Vec A) n))
+                                                                    ((Vec A) (s z)))))))))
+ (ind-entryo 'Vec '((Vec . ((lsucc lz) (Pi (A : (Type lz))
+                                           (Pi (n : Nat)
+                                               (Type lz)))
+                                       ((nil . (Pi (A : (Type lz))
+                                                   ((Vec A) z)))
+                                        (cons . (Pi (A : (Type lz))
+                                                    (Pi (n : Nat)
+                                                        (Pi (a : A)
+                                                            (Pi (ls : ((Vec A) n))
+                                                                ((Vec A) (s z))))))))))
+                    (Nat . (lz (Type lz) ((z . Nat) (s . (Pi (x : Nat) Nat))))))
+             n T Gamma)
 
-(define (inductiveo Delta A args p i D U)
-  (let inductiveo ([A A]
-                   [D D]
-                   [args args]
-                   [p p]
-                   [i i])
-    (conde
-     [(fresh (T Gamma n)
-             (== A D)
-             (ind-entryo A Delta n T Gamma)
-             (takeo n args p)
-             (dropo n args i))]
-     [(fresh (A^ B args^)
-        (== `(,A^ ,B) A)
-        (== `(,B . args^) args)
-        (inductiveo A^ args D))])))
+ #:out #:n 1 #:!c (n T Gamma) '(lz (Type lz) ((z . Nat) (s . (Pi (x : Nat) Nat))))
+ (ind-entryo 'Nat '((Vec . ((lsucc lz) (Pi (A : (Type lz))
+                                           (Pi (n : Nat)
+                                               (Type lz)))
+                                       ((nil . (Pi (A : (Type lz))
+                                                   ((Vec A) z)))
+                                        (cons . (Pi (A : (Type lz))
+                                                    (Pi (n : Nat)
+                                                        (Pi (a : A)
+                                                            (Pi (ls : ((Vec A) n))
+                                                                ((Vec A) (s z))))))))))
+                    (Nat . (lz (Type lz) ((z . Nat) (s . (Pi (x : Nat) Nat))))))
+             n T Gamma))
 
-#;(define (inductive-decomposeo Delta A D p i U)
+(define (telescope-resulto T U)
   (conde
-   [()]))
+   [(fresh (x A B)
+      (== T `(Pi (,x : ,A) ,B))
+      (telescope-resulto B U))]
+   [(fresh (i)
+     (== T `(Type ,i))
+     (== U T))]))
+
+(chko
+ #:out #:n 2 #:!c (U) '(Type lz)
+ (telescope-resulto '(Pi (x : Nat) (Type lz)) U)
+
+ #:out #:n 2 #:!c (U) '(Type lz)
+ (telescope-resulto '(Type lz) U)
+
+ #:out #:n 2 #:!c (U) '(Type lz)
+ (telescope-resulto '(Pi (y : Nat) (Pi (x : Nat) (Type lz))) U))
+
+(define (inductiveo Delta T A p i D U)
+  (fresh (args)
+    (let inductiveo ([T T]
+                     [args^ args])
+      (conde
+       [(fresh (Gamma n)
+          (== args^ '())
+          (== T D)
+          (ind-entryo D Delta n A Gamma)
+          (telescope-resulto A U)
+          ;; TODO: Write a splito relation.
+          (dropo n args p) ; opposite of intuition since we built the list backwards
+          (takeo n args i))]
+       [(fresh (T^ B args^^)
+          ;; TODO This is way too clever
+          (== `(,T^ ,B) T)
+          (== `(,B . ,args^^) args^)
+          (inductiveo T^ args^^))]))))
+(chko
+ #:out #:n 2 #:!c (p i D A U) '(() () Nat (Type lz) (Type lz))
+ (inductiveo '((Nat . (lz (Type lz) ((z . Nat) (s . (Pi (x : Nat) Nat))))))
+             'Nat A p i D U)
+
+ #:out #:n 2 #:!c (p i D A U) '((Nat) (z) Vec (Pi (A : (Type lz))
+                                                  (Pi (n : Nat)
+                                                      (Type lz))) (Type lz))
+ (inductiveo '((Vec . ((lsucc lz) (Pi (A : (Type lz))
+                                      (Pi (n : Nat)
+                                          (Type lz)))
+                                  ((nil . (Pi (A : (Type lz))
+                                              ((Vec A) z)))
+                                   (cons . (Pi (A : (Type lz))
+                                               (Pi (n : Nat)
+                                                   (Pi (a : A)
+                                                       (Pi (ls : ((Vec A) n))
+                                                           ((Vec A) (s z))))))))))
+               (Nat . (lz (Type lz) ((z . Nat) (s . (Pi (x : Nat) Nat))))))
+             '((Vec Nat) z) A p i D U))
 
 ;; Well-formed inductive declarations stub:
 ;; TODO: Strict positivity
