@@ -26,24 +26,19 @@
       (dropo n^ rest o))]))
 
 (chko
- #:out (q) '()
- #:!c
+ #:out #:!c (q) '()
  (takeo 'lz '(1 2 3) q)
 
- #:out (q) '(1)
- #:!c
+ #:out #:!c (q) '(1)
  (takeo '(lsucc lz) '(1 2 3) q)
 
- #:out (q) '(1 2)
- #:!c
+ #:out #:!c (q) '(1 2)
  (takeo '(lsucc (lsucc lz)) '(1 2 3) q)
 
- #:out (q) '(1 2 3)
- #:!c
+ #:out #:!c (q) '(1 2 3)
  (dropo 'lz '(1 2 3) q)
 
- #:out (q) '(2 3)
- #:!c
+ #:out #:!c (q) '(2 3)
  (dropo '(lsucc lz) '(1 2 3) q))
 
 (define (varo e)
@@ -124,39 +119,32 @@
              (evalo gamma^ ebody e^)))]))))
 
 (chko
- #:out (q) '(Type lz)
- #:!c
+ #:out #:!c (q) '(Type lz)
  (evalo '() '() '((lambda (x : (Type (lsucc lz))) x) (Type lz)) q)
 
- #:out (q) 'x
- #:!c
+ #:out #:!c (q) 'x
  (evalo '() '() 'x q)
 
- #:out (q) '(closure () (x : (Type lz)) x)
- #:!c
+ #:out #:!c (q) '(closure () (x : (Type lz)) x)
  (evalo '() '()
         '((lambda (f : (Pi (x : (Type lz)) (Type lz))) f)
           (lambda (x : (Type lz)) x))
         q)
 
- #:= (q)
+ #:= #:n 5 #:!c (q)
  '(x
    ((lambda (_.0 : _.1) x) (Type _.2))
    ((lambda (_.0 : _.1) _.0) x)
    ((lambda (_.0 : _.1) x) _.2)
    ((lambda (_.0 : _.1) x) (lambda (_.2 : _.3) (Type _.4))))
- #:n 5
- #:!c
  (evalo '() '() q 'x)
 
- #:= (q)
+ #:= #:n 5 #:!c (q)
  '((Type _.0)
    _.0
    (Pi (_.0 : (Type _.1)) (Type _.2))
    (Pi (_.0 : _.1) (Type _.2))
    (Pi (_.0 : (Type _.1)) _.0))
- #:n 5
- #:!c
  (evalo '() '() q q))
 
 ;; Delta := . | Ind(Var : n A Gamma)
@@ -305,119 +293,89 @@
         [(=/= x y) (lookupo x gamma^ term)]))))
 
 (require racket/function)
-(chk
- (run* (q)
-       (typeo '() '() '(Type lz) '() q))
- '(((Type (lsucc lz))))
+(chko
+ #:out #:!c (q) '(Type (lsucc lz))
+ (typeo '() '() '(Type lz) '() q)
 
- (run* (q)
-       (typeo '() '() 'z '() q))
- '()
+ #:= (q) '()
+ (typeo '() '() 'z '() q)
 
- (run* (q)
-       (typeo '() '((z . (Type lz))) 'z '() q))
- '(((Type lz)))
+ #:out #:!c (q) '(Type lz)
+ (typeo '() '((z . (Type lz))) 'z '() q)
 
- (run* (q) (typeo '() '() '(lambda (x : (Type lz)) x) '() q))
- '(((Pi (x : (Type lz)) (Type lz))))
+ #:out #:!c (q) '(Pi (x : (Type lz)) (Type lz))
+ (typeo '() '() '(lambda (x : (Type lz)) x) '() q)
 
- (run* (q gamma)
-       (typeo '() '() '((lambda (x : (Type lz)) (Type lz)) (Type lz)) gamma q))
- '()
+ #:= (q gamma) '()
+ (typeo '() '() '((lambda (x : (Type lz)) (Type lz)) (Type lz)) gamma q)
 
- (run* (q gamma)
-       (typeo '() '() '((lambda (x : (Type (lsucc lz))) (Type lz)) (Type lz)) gamma q))
- '((((Type (lsucc lz))
-     ((x . (Type lz)) . _.0))))
+ #:out #:!c (q gamma) '((Type (lsucc lz)) ((x . (Type lz)) . _.0))
+ (typeo '() '() '((lambda (x : (Type (lsucc lz))) (Type lz)) (Type lz)) gamma q)
 
- (run* (q gamma)
-       (typeo '() '() '((lambda (x : (Type (lsucc lz))) x) (Type lz)) gamma q))
- '((((Type (lsucc lz))
-     ((x . (Type lz)) . _.0))))
+ #:out #:!c (q gamma) '((Type (lsucc lz)) ((x . (Type lz)) . _.0))
+ (typeo '() '() '((lambda (x : (Type (lsucc lz))) x) (Type lz)) gamma q)
 
- (run* (q)
-       (typeo '() '() '(lambda (A : (Type lz))
-                         (lambda (a : A)
-                           a)) '() q))
- '(((Pi (A : (Type lz))
-        (Pi (a : A)
-            A))))
+ #:out #:!c (q) '(Pi (A : (Type lz)) (Pi (a : A) A))
+ (typeo '() '() '(lambda (A : (Type lz))
+                   (lambda (a : A)
+                     a)) '() q)
 
  ;; Try inferring some types
- #:? (curry member '(((Pi (A : (Type lz)) (Pi (a : A) A))
-                      (Type lz) A)))
- (run 5 (q ?1 ?2)
-      (typeo '() '() `(lambda (A : ,?1)
-                        (lambda (a : ,?2)
-                          a)) '() q))
+ #:in #:n 3 #:!c (q ?1 ?2) '((Pi (A : (Type lz)) (Pi (a : A) A)) (Type lz) A)
+ (typeo '() '() `(lambda (A : ,?1)
+                   (lambda (a : ,?2)
+                     a)) '() q)
 
  ;; Try inferring some terms
- #:? (curry member '((lambda (A : (Type lz))
-                       (lambda (a : A)
-                         a))))
- (run 2 (e)
-      (typeo '() '() e '() `(Pi (A : (Type lz)) (Pi (a : A) A))))
+ #:in #:n 2 #:!c (e) '(lambda (A : (Type lz))
+                  (lambda (a : A)
+                    a))
+ (typeo '() '() e '() `(Pi (A : (Type lz)) (Pi (a : A) A)))
 
  ;; Check dependent application
- #:? (curry member '((Pi (a : (Type lz)) (Type lz))))
- (run 1 (q)
-      (fresh (gamma ?1 q1)
-             (typeo '() '() `((lambda (A : ,?1)
-                                (lambda (a : A)
-                                  a))
-                              (Type lz)) gamma q1)
-             (evalo '() gamma q1 q)))
+ #:in #:n 1 #:!c (q) '(Pi (a : (Type lz)) (Type lz))
+ (fresh (gamma ?1 q1)
+        (typeo '() '() `((lambda (A : ,?1)
+                           (lambda (a : A)
+                             a))
+                         (Type lz)) gamma q1)
+        (evalo '() gamma q1 q))
 
  ;; Check conversion
- #:? (curry member '((Pi (a : (Type lz)) (Type lz))))
- (run 1 (q)
-      (fresh (gamma ?1)
-             (type-checko '() '() `((lambda (A : ,?1)
-                                      (lambda (a : A)
-                                        a))
-                                    (Type lz)) gamma q)))
+ #:in #:n 1 #:!c (q) '(Pi (a : (Type lz)) (Type lz))
+ (fresh (gamma ?1)
+        (type-checko '() '() `((lambda (A : ,?1)
+                                 (lambda (a : A)
+                                   a))
+                               (Type lz)) gamma q))
 
  ;; Check False as a concept
- (run 1 (q) (type-checko '() '() `(Pi (α : (Type lz)) α) '() q))
- '(((Type lz)))
+ #:out #:n 1 #:!c (q) '(Type lz)
+ (type-checko '() '() `(Pi (α : (Type lz)) α) '() q)
 
  ;; Prove me some Nats
- #:? (lambda (x)
-       (for/fold ([r #t])
-                 ([y
-                   '((z)
-                     ((s z)))])
-         (and (member y x) r)))
- (run 5 (e)
-      (fresh (gamma)
-             (typeo '() '((z . Nat) (s . (Pi (x : Nat) Nat)) (Nat . (Type lz)))
-                    e gamma 'Nat)))
+ #:subset #:n 5 #:!c (e) '((z) ((s z)))
+ (fresh (gamma)
+        (typeo '() '((z . Nat) (s . (Pi (x : Nat) Nat)) (Nat . (Type lz)))
+               e gamma 'Nat))
 
  ;; Inductive tests
- #:? (lambda (x)
-       (for/fold ([r #t])
-                 ([y
-                   '((z)
-                     ((s z)))])
-         (and (member y x) r)))
- (run 8 (e)
-     (fresh (gamma)
-            (typeo '((Nat . (0 (Type lz)
-                               ((z . Nat)
-                                (s . (Pi (x : Nat) Nat)))))) '()
-                   e gamma 'Nat))))
+ #:subset #:n 8 #:!c (e) '((z) ((s z)))
+ (fresh (gamma)
+        (typeo '((Nat . (0 (Type lz)
+                           ((z . Nat)
+                            (s . (Pi (x : Nat) Nat)))))) '()
+                            e gamma 'Nat)))
 
 ;; Prove False
 
 ;; Have been run for 60 seconds
-(chko
- #:= (e) '((()))
- #:t 60
+#;(chko
+ #:= #:t 60 (e) '((()))
  (typeo '() '() e '() '(Pi (α : (Type lz)) α))
 
 ;; Prove False under some assumptions
- #:= (e) '((()))
- #:t 60
+ #:= #:t 60 (e) '((()))
  (typeo '((f . (Pi (A : (Type lz))
                    (Pi (B : (Type lz))
                        (Pi (_ : A) B))))

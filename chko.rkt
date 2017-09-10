@@ -10,32 +10,37 @@
 
 #|
 (chko
-  #:= (q) '(((Type lz))) ; an #:= test just tests for equality
-  #:n 1                  ; all tests take an optional number of test, which defauts to *
-  (evalo '() q '() q))
+   each kind of test can take any of the following optional modifiers:
+     #:n n:nat -- Run the query until n results are produced. Default to *
+     #:t n:nat -- Run the query until t seconds have passed, or until completion. Default to
+ infinite.
+     #:!c      -- Filter the constraint set out before checking that the expected matches the actual.
 
-  #:out (q gamma) '((Type lz)) '() ; an #:out test checks equality against the variable(s)
-  #:n 1
-  (evalo '() q gamma q))
+  An #:= test checks that the (one) expected value is equal? to the output of the result of running,
+ via run, the actual expression.
+    #:= #:n 1 (q) '(((Type lz)))
+    (evalo '() q '() q))
 
-  #:in (q) '((Type lz)) ; an #:in tests that the given values are members of the output variable
-  #:n 5
+  An #:out test checks that each expected value is equal? to the output of the corresponding query
+variable.
+    #:out #:n 1 (q gamma) '((Type lz)) '()
+    (evalo '() q gamma q))
+
+  An #:in test checks that the expected value is a member of the set of outputs produced by the
+corresponding query.
+    #:in #:n 5 (q) '((Type lz))
+    (evalo '() q q))
+
+  #:in #:n 5 #:!c (q) '(Type lz)
   (evalo '() q q))
 
-  #:in (q) '(Type lz)
-  #:n 5 #:!c              ; the optional #:!c flag ignores the constraint list when checking
-  (evalo '() q q))
-
-  #:= (e) '()
-  #:t 30                 ; the optional #:t flag ignores the specifies a timeout after which the test
-is assumed to pass
+  #:= #:t 30 (e) '()
   (typeo '() e '() '(Pi (α : (Type lz)) α))
  |#
 
 (define (mdrop-right mlist pos)
   (mreverse (mcdr (mreverse mlist))))
 
-(require racket/trace)
 (define (filter-constraints res-set)
   (mmap (lambda (x) (mcar x)) res-set))
 
@@ -48,62 +53,78 @@ is assumed to pass
         (kill-thread t)
         default)))
 
+(define ((check-mmember expected) ls)
+  (and (mmember expected ls) #t))
+
+(define ((check-msublist expected) ls)
+  (for/fold ([r #t])
+            ([y expected])
+    (and (mmember y ls) r)))
+
 (begin-for-syntax
   (define (make-run vars n test timeout expect filter-constraints?)
     (define run
-      #`(#,@(if n #`(run #,n) #'(run*))
+      (quasisyntax/loc test
+        (#,@(if n (quasisyntax/loc n (run #,n)) (quasisyntax/loc test (run*)))
          #,vars
-         #,test))
+         #,test)))
     (define filtered-run
       (if filter-constraints?
-          #`(filter-constraints #,run)
+          (quasisyntax/loc test
+            (filter-constraints #,run))
           run))
     (if timeout
-        #`(timeout #,timeout #,expect (lambda () #,filtered-run))
+        (quasisyntax/loc timeout
+          (timeout #,timeout #,expect (lambda () #,filtered-run)))
         filtered-run))
 
   (define (make-chk-test flag actual expected)
     (syntax-parse flag
+      [#:subset
+       (quasisyntax/loc flag
+         (#:? (check-msublist #,expected) #,actual))]
       [#:=
-       #`(#,actual #,expected)]
+       (quasisyntax/loc flag
+         (#,actual #,expected))]
       [#:out
-       #`(#,actual (mlist #,expected))]
+       (quasisyntax/loc flag
+         (#,actual (mlist #,expected)))]
       [#:in
-       #`(#:? (lambda (x)
-            (for/fold ([r #t])
-                      ([y #,expected])
-              (and (mmember y x) r)))
-          #,actual)]))
+       (quasisyntax/loc flag
+         (#:? (check-mmember #,expected) #,actual))]))
 
   (define-syntax-class test-flag
-    (pattern (~or #:= #:out #:in)))
-
-  (define (out-test? flag)
-    (syntax-parse flag [#:out #t] [else #f]))
-
-  (define (=-test? flag)
-    (syntax-parse flag [#:= #t] [else #f]))
+    (pattern (~or #:= #:out #:in #:subset)))
 
   (define-splicing-syntax-class testo
     (pattern
-     (~seq flag:test-flag (query-variable:id ...) expected-value
+     (~seq flag:test-flag
            (~optional (~seq #:n n:nat))
            (~optional (~and #:!c (~bind (filter-constraints? #t))))
            (~optional (~seq #:t t:nat))
+           (query-variable:id ...) expected-value
            test:expr)
-;     #:fail-when (and (=-test? (attribute flag))
-;                        (not (= (length (attribute expected-value)) 1)))
+;     #:fail-when (and (memq (syntax-e #'flag) '(#:in #:out))
+;                      (= (length (attribute query-variable))
+;                         (length (attribute expected-value))))
 ;     (raise-syntax-error 'chko
-;                         "For #:= tests, there must be exactly 1 expected value"
+;                         (format
+;                          "For ~a tests, there must be the same number of query variables as expected values."
+;                          (syntax-e #'flag))
 ;                         this-syntax
-;                         #'expected-value)
-;     #:fail-when (and (out-test? (attribute flag))
-;                        (= (length (attribute query-variable)) (length (attribute expected-value))))
+;                         (quasisyntax/loc this-syntax
+;                           (query-variable ...))
+;                         (list (attribute expected-value)))
+;
+;     ;; TODO: Support testing each query variable against a subset
+;     #:fail-when (and (memq (syntax-e #'flag) '(#:= #:subset))
+;                      (not (= (length (attribute expected-value)) 1)))
 ;     (raise-syntax-error 'chko
-;                         "For #:out tests, there must be the same number of query variables as expected values"
+;                         (format "For ~a tests, there must be exactly 1 expected value."
+;                                 (syntax-e #'flag))
 ;                         this-syntax
-;                         #'(query-variable ...)
-;                         (list #'(expected-value ...)))
+;                         (attribute expected-value))
+
      #:attr expected (attribute expected-value)
      #:attr actual (make-run (attribute query-variable)
                              (attribute n)
@@ -113,26 +134,13 @@ is assumed to pass
                              (attribute filter-constraints?))
      #:attr chk-test (make-chk-test (attribute flag) (attribute actual) (attribute expected)))))
 
-(begin-for-syntax
-  (require racket/trace (for-template racket/trace))
-  (define (maybe-syntax->datum x)
-    (if (syntax? x)
-        (syntax->datum x)
-        x))
-  (current-trace-print-args
-   (let ([ctpa (current-trace-print-args)])
-     (lambda (s l kw l2 n)
-       (ctpa s (map maybe-syntax->datum l) kw l2 n))))
-  (current-trace-print-results
-   (let ([ctpr (current-trace-print-results)])
-     (lambda (s l n)
-       (ctpr s (map maybe-syntax->datum l) n)))))
 (define-syntax (chko syn)
   (syntax-parse syn
     [(_ t:testo)
-     #`(chk #,@(attribute t.chk-test))]
+     (quasisyntax/loc syn (chk #,@(quasisyntax/loc t t.chk-test)))]
     [(_ r ... t:testo)
-     #`(chk*
-        (chko r ...)
-        (chk #,@(attribute t.chk-test)))]))
-
+     (quasisyntax/loc syn
+       (chk*
+        #,(quasisyntax/loc syn
+            (chko r ...))
+        (chk #,@(quasisyntax/loc t t.chk-test))))]))
