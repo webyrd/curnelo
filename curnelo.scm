@@ -86,6 +86,19 @@
       (== k `(lsucc ,k^))
       (max-levelo i^ j^ k^))]))
 
+(define Delta_Vec
+  '((Vec . ((lsucc lz) (Pi (A : (Type lz))
+                           (Pi (n : Nat)
+                               (Type lz)))
+                       ((nil . (Pi (A : (Type lz))
+                                   ((Vec A) z)))
+                        (cons . (Pi (A : (Type lz))
+                                    (Pi (n : Nat)
+                                        (Pi (a : A)
+                                            (Pi (ls : ((Vec A) n))
+                                                ((Vec A) (s n))))))))))
+    (Nat . (lz (Type lz) ((z . Nat) (s . (Pi (x : Nat) Nat)))))))
+
 (define evalo
   (lambda (Delta gamma e e^)
     (let evalo ([gamma gamma]
@@ -182,33 +195,11 @@
                                                         (Pi (n : Nat)
                                                             (Pi (a : A)
                                                                 (Pi (ls : ((Vec A) n))
-                                                                    ((Vec A) (s z)))))))))
- (ind-entryo 'Vec '((Vec . ((lsucc lz) (Pi (A : (Type lz))
-                                           (Pi (n : Nat)
-                                               (Type lz)))
-                                       ((nil . (Pi (A : (Type lz))
-                                                   ((Vec A) z)))
-                                        (cons . (Pi (A : (Type lz))
-                                                    (Pi (n : Nat)
-                                                        (Pi (a : A)
-                                                            (Pi (ls : ((Vec A) n))
-                                                                ((Vec A) (s z))))))))))
-                    (Nat . (lz (Type lz) ((z . Nat) (s . (Pi (x : Nat) Nat))))))
-             n T Gamma)
+                                                                    ((Vec A) (s n)))))))))
+ (ind-entryo 'Vec Delta_Vec n T Gamma)
 
  #:out #:n 1 #:!c (n T Gamma) '(lz (Type lz) ((z . Nat) (s . (Pi (x : Nat) Nat))))
- (ind-entryo 'Nat '((Vec . ((lsucc lz) (Pi (A : (Type lz))
-                                           (Pi (n : Nat)
-                                               (Type lz)))
-                                       ((nil . (Pi (A : (Type lz))
-                                                   ((Vec A) z)))
-                                        (cons . (Pi (A : (Type lz))
-                                                    (Pi (n : Nat)
-                                                        (Pi (a : A)
-                                                            (Pi (ls : ((Vec A) n))
-                                                                ((Vec A) (s z))))))))))
-                    (Nat . (lz (Type lz) ((z . Nat) (s . (Pi (x : Nat) Nat))))))
-             n T Gamma))
+ (ind-entryo 'Nat Delta_Vec n T Gamma))
 
 (define (telescope-resulto T U)
   (conde
@@ -255,18 +246,7 @@
  #:out #:n 2 #:!c (p i D A U) '((Nat) (z) Vec (Pi (A : (Type lz))
                                                   (Pi (n : Nat)
                                                       (Type lz))) (Type lz))
- (inductiveo '((Vec . ((lsucc lz) (Pi (A : (Type lz))
-                                      (Pi (n : Nat)
-                                          (Type lz)))
-                                  ((nil . (Pi (A : (Type lz))
-                                              ((Vec A) z)))
-                                   (cons . (Pi (A : (Type lz))
-                                               (Pi (n : Nat)
-                                                   (Pi (a : A)
-                                                       (Pi (ls : ((Vec A) n))
-                                                           ((Vec A) (s z))))))))))
-               (Nat . (lz (Type lz) ((z . Nat) (s . (Pi (x : Nat) Nat))))))
-             '((Vec Nat) z) A p i D U))
+ (inductiveo Delta_Vec '((Vec Nat) z) A p i D U))
 
 ;; Well-formed inductive declarations stub:
 ;; TODO: Strict positivity
@@ -348,9 +328,49 @@
   (conde
    [(== `())]))
 
-;; Eliminate the type A, whoses parameters are p and indicies are i, from the universe U_f into the
-;; universe U_t
-(define (elimableo Delta A p i U_f U_t))
+(define (instantiateo Pi args gamma A)
+  (let loop ([Pi Pi]
+             [args args]
+             [gamma^ '()])
+    (conde
+     [(fresh (x A^ B e args^)
+        (== `(Pi (,x : ,A^) ,B) Pi)
+        (== `(,e . ,args^) args)
+        (loop B args^ `((,x . ,e) . ,gamma^)))]
+     [(fresh ()
+        (== '() args)
+        (== gamma gamma^)
+        (== Pi A))])))
+
+(chko
+ #:out #:n 1 #:!c (gamma A) '(((x . Nat)) (Type 1))
+ (instantiateo '(Pi (x : (Type 1)) (Type 1)) '(Nat) gamma A)
+
+ #:out #:n 1 #:!c (gamma A) '(((x . Nat)) (Pi (a : x) x))
+ (instantiateo '(Pi (x : (Type 1)) (Pi (a : x) x)) '(Nat) gamma A))
+
+;; Given the type AD of the inductive type, the parameters p and the indicies i, what is the expected
+;; type of the motive B?
+;; Remember that due to dependency, B will be in under the substitution gamma.
+;;
+;; D p ... : Π (xⱼ : Aⱼ ...). Type = A
+;; motive : Π (xⱼ : Aⱼ ... _ : (D pᵢ ... xⱼ ...)). Type
+(define (motive-typeo A D_p B)
+  (let loop ([A A] [D D_p] [B B])
+    (conde
+     [(fresh (x A^ A_i B^)
+        (== A `(Pi (,x : ,A_i) ,A^))
+        (== B `(Pi (,x : ,A_i) ,B^))
+        (loop A^ `(,D_p ,x) B^))]
+     [(fresh (x j i)
+        (== A `(Type ,i))
+        (== B `(Pi (,x : ,D) (Type ,j))))])))
+
+(chko
+ #:out #:n 1 #:!c (B) '(Pi (_.0 : Nat) (Type _.1))
+ (motive-typeo '(Type 0) 'Nat B)
+ #:out #:n 1 #:!c (B) '(Pi (n : Nat) (Pi (_.0 : ((Vec Nat) n)) (Type _.1)))
+ (motive-typeo '(Pi (n : Nat) (Type 0)) '(Vec Nat) B))
 
 ;; Need infer/check distinction for algorithmic interpretation.
 (define (type-checko Delta Gamma e gamma A)
