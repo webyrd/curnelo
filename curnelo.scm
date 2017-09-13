@@ -53,12 +53,12 @@
 (define deltao
   (lambda (x gamma term)
     (conde
-      [(== '() gamma) (== x term)]
-      [(fresh (y t gamma^)
-         (== `((,y . ,t) . ,gamma^) gamma)
-         (conde
-           [(== x y) (== t term)]
-           [(=/= x y) (deltao x gamma^ term)]))])))
+     [(== '() gamma) (== x term)]
+     [(fresh (y t gamma^)
+        (== `((,y . ,t) . ,gamma^) gamma)
+        (conde
+         [(== x y) (== t term)]
+         [(=/= x y) (deltao x gamma^ term)]))])))
 
 (define ext-envo
   (lambda (gamma x e gamma^)
@@ -105,31 +105,31 @@
                 [e e]
                 [e^ e^])
       (conde
-        [(fresh (i)
-           (== `(Type ,i) e)
-           (== `(Type ,i) e^))]
-        [(varo e) (deltao e gamma e^)]
-        [(fresh (A A^ B B^ gamma^ x)
-           (== `(Pi (,x : ,A) ,B) e)
-           (ext-envo gamma x x gamma^)
-           (== `(Pi (,x : ,A^) ,B^) e^)
-           (evalo gamma A A^)
-           (evalo gamma^ B B^))]
-        [(fresh (x A ebody ebody^)
-           (== `(lambda (,x : ,A) ,ebody) e)
-           (== `(closure ,gamma (,x : ,A) ,ebody^) e^)
-           (evalo gamma ebody ebody^))]
-        [(fresh (e1 e2 e2^ x A ebody env)
-           (== `(,e1 ,e2) e)
-           (evalo gamma e1
-                  `(closure ,env (,x : ,A) ,ebody))
-           (evalo gamma e2 e2^)
-           (fresh (gamma^)
-             (ext-envo gamma
-                       x
-                       e2^
-                       gamma^)
-             (evalo gamma^ ebody e^)))]))))
+       [(fresh (i)
+          (== `(Type ,i) e)
+          (== `(Type ,i) e^))]
+       [(varo e) (deltao e gamma e^)]
+       [(fresh (A A^ B B^ gamma^ x)
+          (== `(Pi (,x : ,A) ,B) e)
+          (ext-envo gamma x x gamma^)
+          (== `(Pi (,x : ,A^) ,B^) e^)
+          (evalo gamma A A^)
+          (evalo gamma^ B B^))]
+       [(fresh (x A ebody ebody^)
+          (== `(lambda (,x : ,A) ,ebody) e)
+          (== `(closure ,gamma (,x : ,A) ,ebody^) e^)
+          (evalo gamma ebody ebody^))]
+       [(fresh (e1 e2 e2^ x A ebody env)
+          (== `(,e1 ,e2) e)
+          (evalo gamma e1
+                 `(closure ,env (,x : ,A) ,ebody))
+          (evalo gamma e2 e2^)
+          (fresh (gamma^)
+            (ext-envo gamma
+                      x
+                      e2^
+                      gamma^)
+            (evalo gamma^ ebody e^)))]))))
 
 (chko
  #:out #:!c (q) '(Type lz)
@@ -207,8 +207,8 @@
       (== T `(Pi (,x : ,A) ,B))
       (telescope-resulto B U))]
    [(fresh (i)
-     (== T `(Type ,i))
-     (== U T))]))
+      (== T `(Type ,i))
+      (== U T))]))
 
 (chko
  #:out #:n 2 #:!c (U) '(Type lz)
@@ -259,70 +259,74 @@
     (conde
      [(wf Delta)
       (let typeo ([Gamma Gamma]
-                [e e]
-                [gamma gamma]
-                [A A])
-      (conde
-        [(fresh (i)
-           (== `(Type ,i) e) ;; T-Type
-           (levelo i)
-           (== `(Type (lsucc ,i)) A))]
-        [(varo e) ;; T-Var
-         (lookupo e Gamma A)]
-        [(varo e) ;; T-Constr/Ind
-         (ind-lookupo e Delta A)]
-        [(fresh (x A^ B Gamma^ gamma^ i) ;; T-Pi-Prop
-           (== `(Pi (,x : ,A^) ,B) e)
-           (ext-envo Gamma x A^ Gamma^)
-           (ext-envo gamma x x gamma^)
-           (== A `(Type lz))
-           (typeo Gamma A^ gamma `(Type ,i))
-           (typeo Gamma^ B gamma^ `(Type lz)))]
-        [(fresh (x A^ B Gamma^ gamma^ i j k) ;; T-Pi-Type
-           (== `(Pi (,x : ,A^) ,B) e)
-           (ext-envo Gamma x A^ Gamma^)
-           (ext-envo gamma x x gamma^)
-           (== A `(Type ,k))
-           (max-levelo i j k)
-           (typeo Gamma A^ gamma `(Type ,i))
-           (typeo Gamma^ B gamma^ `(Type ,j)))]
-        [(fresh (x A^ body B Gamma^ gamma^ i) ;; T-Lam
-           (== `(lambda (,x : ,A^) ,body) e)
-           (== `(Pi (,x : ,A^) ,B) A)
-           (ext-envo Gamma x A^ Gamma^)
-           (ext-envo gamma x x gamma^)
-           (typeo Gamma A^ gamma `(Type ,i))
-           (typeo Gamma^ body gamma^ B))]
-        [(fresh (e1 e2 A^ B gamma^^ gamma^ x) ;; T-App
-           ;; I suspect this could use more constraints to allow typeo to return different subgammas
-           ;; from type-checko, but I'll sort that out later.
-           ;; Unification might just do the right thing
-           (== `(,e1 ,e2) e)
-           (ext-envo gamma^ x e2 gamma)
-           (type-checko Delta Gamma e2 gamma^ A^)
-           (typeo Gamma e1 gamma^ `(Pi (,x : ,A^) ,B))
-           (== A B))]
-        #;[(fresh (target motive methods A^ D C argsD motiveA i j Bs)
-           (== `(elim ,target ,motive . ,methods) e)
+                  [e e]
+                  [gamma gamma]
+                  [A A])
+        (conde
+         [(fresh (i)
+            (== `(Type ,i) e) ;; T-Type
+            (levelo i)
+            (== `(Type (lsucc ,i)) A))]
+         [(varo e) ;; T-Var
+          (lookupo e Gamma A)]
+         [(varo e) ;; T-Constr/Ind
+          (ind-lookupo e Delta A)]
+         [(fresh (x A^ B Gamma^ gamma^ i) ;; T-Pi-Prop
+            (== `(Pi (,x : ,A^) ,B) e)
+            (ext-envo Gamma x A^ Gamma^)
+            (ext-envo gamma x x gamma^)
+            (== A `(Type lz))
+            (typeo Gamma A^ gamma `(Type ,i))
+            (typeo Gamma^ B gamma^ `(Type lz)))]
+         [(fresh (x A^ B Gamma^ gamma^ i j k) ;; T-Pi-Type
+            (== `(Pi (,x : ,A^) ,B) e)
+            (ext-envo Gamma x A^ Gamma^)
+            (ext-envo gamma x x gamma^)
+            (== A `(Type ,k))
+            (max-levelo i j k)
+            (typeo Gamma A^ gamma `(Type ,i))
+            (typeo Gamma^ B gamma^ `(Type ,j)))]
+         [(fresh (x A^ body B Gamma^ gamma^ i) ;; T-Lam
+            (== `(lambda (,x : ,A^) ,body) e)
+            (== `(Pi (,x : ,A^) ,B) A)
+            (ext-envo Gamma x A^ Gamma^)
+            (ext-envo gamma x x gamma^)
+            (typeo Gamma A^ gamma `(Type ,i))
+            (typeo Gamma^ body gamma^ B))]
+         [(fresh (e1 e2 A^ B gamma^^ gamma^ x) ;; T-App
+            ;; I suspect this could use more constraints to allow typeo to return different subgammas
+            ;; from type-checko, but I'll sort that out later.
+            ;; Unification might just do the right thing
+            (== `(,e1 ,e2) e)
+            (ext-envo gamma^ x e2 gamma)
+            (type-checko Delta Gamma e2 gamma^ A^)
+            (typeo Gamma e1 gamma^ `(Pi (,x : ,A^) ,B))
+            (== A B))]
+         #;[(fresh (target motive methods A^ D C argsD motiveA i j Bs)
+              (== `(elim ,target ,motive . ,methods) e)
 
-           (applyo motive indices target A)
+              (applyo motive indices target A)
 
-           (inductiveo Delta A^ args p i D `(Type ,j))
-           (inductive-decomposeo Delta A^ D parameters indices `(Type ,j))
+              (inductiveo Delta A^ D parameters indices)
 
-           (elimableo Delta motiveA parameters indices `(Type ,j) `(Type ,i))
-           (branch-typeso Delta motive p i Bs)
+              (applyo D parameters D_p)
+              (typeo Gamma D_p gamma^ A_p)
+              (motive-typeo A_p D_p motiveA^)
 
-           (typeo Gamma target gamma A^)
-           (typeo Gamma motive gamma motiveA)
-           )]))])))
+              (branch-typeso Delta Gamma motive p i Bs)
 
-(define (applyo f args t A)
-  (== (list
-       (for/fold ([f f])
-                ([a args])
-         `(,f ,a))
-       t) A))
+              (typeo Gamma target gamma A^)
+              (type-checko Delta Gamma motive gamma motiveA^)
+              )]))])))
+
+(define (applyo f args A)
+  (conde
+   [(== '() args)
+    (== f A)]
+   [(fresh (e args^ f^)
+      (== `(,e . ,args^) args)
+      (== `(,f ,e) f^)
+      (applyo f^ args^ A))]))
 
 (define (branch-typeso Delta motive p i Bs)
   (conde
@@ -383,8 +387,8 @@
     (fresh (y t gamma^)
       (== `((,y . ,t) . ,gamma^) gamma)
       (conde
-        [(== x y) (== t term)]
-        [(=/= x y) (lookupo x gamma^ term)]))))
+       [(== x y) (== t term)]
+       [(=/= x y) (lookupo x gamma^ term)]))))
 
 (require racket/function)
 (chko
@@ -422,26 +426,26 @@
 
  ;; Try inferring some terms
  #:in #:n 2 #:!c (e) '(lambda (A : (Type lz))
-                  (lambda (a : A)
-                    a))
+                        (lambda (a : A)
+                          a))
  (typeo '() '() e '() `(Pi (A : (Type lz)) (Pi (a : A) A)))
 
  ;; Check dependent application
  #:in #:n 1 #:!c (q) '(Pi (a : (Type lz)) (Type lz))
  (fresh (gamma ?1 q1)
-        (typeo '() '() `((lambda (A : ,?1)
-                           (lambda (a : A)
-                             a))
-                         (Type lz)) gamma q1)
-        (evalo '() gamma q1 q))
+   (typeo '() '() `((lambda (A : ,?1)
+                      (lambda (a : A)
+                        a))
+                    (Type lz)) gamma q1)
+   (evalo '() gamma q1 q))
 
  ;; Check conversion
  #:in #:n 1 #:!c (q) '(Pi (a : (Type lz)) (Type lz))
  (fresh (gamma ?1)
-        (type-checko '() '() `((lambda (A : ,?1)
-                                 (lambda (a : A)
-                                   a))
-                               (Type lz)) gamma q))
+   (type-checko '() '() `((lambda (A : ,?1)
+                            (lambda (a : A)
+                              a))
+                          (Type lz)) gamma q))
 
  ;; Check False as a concept
  #:out #:n 1 #:!c (q) '(Type lz)
@@ -450,29 +454,33 @@
  ;; Prove me some Nats
  #:subset #:n 5 #:!c (e) '(z (s z))
  (fresh (gamma)
-        (typeo '() '((z . Nat) (s . (Pi (x : Nat) Nat)) (Nat . (Type lz)))
-               e gamma 'Nat))
+   (typeo '() '((z . Nat) (s . (Pi (x : Nat) Nat)) (Nat . (Type lz)))
+          e gamma 'Nat))
 
  ;; Inductive tests
  #:subset #:n 8 #:!c (e) '(z (s z))
  (fresh (gamma)
-        (typeo '((Nat . (0 (Type lz)
-                           ((z . Nat)
-                            (s . (Pi (x : Nat) Nat)))))) '()
-                            e gamma 'Nat)))
+   (typeo '((Nat . (0 (Type lz)
+                      ((z . Nat)
+                       (s . (Pi (x : Nat) Nat)))))) '()
+          e gamma 'Nat)))
 
 ;; Prove False
 
 ;; Have been run for 60 seconds
 #;(chko
- #:= #:t 60 (e) '((()))
- (typeo '() '() e '() '(Pi (α : (Type lz)) α))
+   #:= #:t 60 (e) '((()))
+   (typeo '() '() e '() '(Pi (α : (Type lz)) α))
 
-;; Prove False under some assumptions
- #:= #:t 60 (e) '((()))
- (typeo '((f . (Pi (A : (Type lz))
-                   (Pi (B : (Type lz))
-                       (Pi (_ : A) B))))
-          (z . Nat)
-          (s . (Pi (n : Nat) Nat))
-          (Nat . (Type lz))) e '() '(Pi (α : (Type lz)) α)))
+   ;; Prove False under some assumptions
+   #:= #:t 60 (e) '((()))
+   (typeo '((f . (Pi (A : (Type lz))
+                     (Pi (B : (Type lz))
+                         (Pi (_ : A) B))))
+            (z . Nat)
+            (s . (Pi (n : Nat) Nat))
+            (Nat . (Type lz))) e '() '(Pi (α : (Type lz)) α)))
+
+;; Local Variables:
+;; eval: (put 'fresh 'racket-indent-function 'defun)
+;; End:
