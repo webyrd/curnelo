@@ -88,7 +88,8 @@ corresponding query.
          (#,actual #,expected))]
       [#:out
        (quasisyntax/loc flag
-         (#,actual (mlist #,expected)))]
+         (#,actual #,(quasisyntax/loc expected
+                       (mlist #,expected))))]
       [#:in
        (quasisyntax/loc flag
          (#:? (check-mmember #,expected) #,actual))]))
