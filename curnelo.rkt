@@ -220,16 +220,15 @@
  #:out #:n 2 #:!c (U) '(Type lz)
  (telescope-resulto '(Pi (y : Nat) (Pi (x : Nat) (Type lz))) U))
 
-(define (inductiveo Delta T A p i D U)
+(define (inductiveo Delta T D p i)
   (fresh (args)
     (let inductiveo ([T T]
                      [args^ args])
       (conde
-       [(fresh (Gamma n)
+       [(fresh (Gamma n A)
           (== args^ '())
           (== T D)
           (ind-entryo D Delta n A Gamma)
-          (telescope-resulto A U)
           ;; TODO: Write a splito relation.
           (dropo n args p) ; opposite of intuition since we built the list backwards
           (takeo n args i))]
@@ -239,14 +238,19 @@
           (== `(,B . ,args^^) args^)
           (inductiveo T^ args^^))]))))
 (chko
- #:out #:n 2 #:!c (p i D A U) '(() () Nat (Type lz) (Type lz))
+ #:out #:n 2 #:!c (p i) '(() ())
  (inductiveo '((Nat . (lz (Type lz) ((z . Nat) (s . (Pi (x : Nat) Nat))))))
-             'Nat A p i D U)
+             'Nat 'Nat p i)
 
- #:out #:n 2 #:!c (p i D A U) '((Nat) (z) Vec (Pi (A : (Type lz))
-                                                  (Pi (n : Nat)
-                                                      (Type lz))) (Type lz))
- (inductiveo Delta_Vec '((Vec Nat) z) A p i D U))
+ #:out #:n 2 #:!c (p i D) '(() () Nat)
+ (inductiveo '((Nat . (lz (Type lz) ((z . Nat) (s . (Pi (x : Nat) Nat))))))
+             'Nat D p i)
+
+ #:out #:n 2 #:!c (p i) '((Nat) (z))
+ (inductiveo Delta_Vec '((Vec Nat) z) 'Vec p i)
+
+ #:out #:n 2 #:!c (p i D) '((Nat) (z) Vec)
+ (inductiveo Delta_Vec '((Vec Nat) z) D p i))
 
 ;; Well-formed inductive declarations stub:
 ;; TODO: Strict positivity
@@ -302,10 +306,12 @@
             (type-checko Delta Gamma e2 gamma^ A^)
             (typeo Gamma e1 gamma^ `(Pi (,x : ,A^) ,B))
             (== A B))]
-         #;[(fresh (target motive methods A^ D C argsD motiveA i j Bs)
+         [(fresh (target motive methods A^ D D_p C argsD motiveA i j Bs parameters indices tmp gamma^
+                         A_p motiveA^)
               (== `(elim ,target ,motive . ,methods) e)
 
-              (applyo motive indices target A)
+              (applyo motive indices tmp)
+              (== `(,tmp ,target) A)
 
               (inductiveo Delta A^ D parameters indices)
 
@@ -313,20 +319,23 @@
               (typeo Gamma D_p gamma^ A_p)
               (motive-typeo A_p D_p motiveA^)
 
-              (branch-typeso Delta Gamma motive p i Bs)
+              #;(branch-typeso Delta Gamma motive p i Bs)
 
               (typeo Gamma target gamma A^)
-              (type-checko Delta Gamma motive gamma motiveA^)
+              (type-checko Delta Gamma motive gamma^ motiveA^)
               )]))])))
 
-(define (applyo f args A)
-  (conde
-   [(== '() args)
-    (== f A)]
-   [(fresh (e args^ f^)
-      (== `(,e . ,args^) args)
-      (== `(,f ,e) f^)
-      (applyo f^ args^ A))]))
+;; f (e ...) -> (f e ...)
+;; but curried
+(define (applyo rator rands app)
+  (let loop ([rator rator] [rands rands])
+    (conde
+     [(== '() rands)
+      (== rator app)]
+     [(fresh (rand rator^ rands^)
+        (== `(,rand . ,rands^) rands)
+        (== `(,rator ,rand) rator^)
+        (loop rator^ rands^))])))
 
 (define (branch-typeso Delta motive p i Bs)
   (conde
@@ -458,12 +467,21 @@
           e gamma 'Nat))
 
  ;; Inductive tests
- #:subset #:n 8 #:!c (e) '(z (s z))
+ #:subset #:n 8 #:!c #:t 10 (e) '(z (s z))
  (fresh (gamma)
    (typeo '((Nat . (0 (Type lz)
                       ((z . Nat)
                        (s . (Pi (x : Nat) Nat)))))) '()
-          e gamma 'Nat)))
+          e gamma 'Nat))
+
+ ; linear time implementation of zero.
+ #:out #:n 1 #:!c (gamma A) '(_.0 ((lambda (x : Nat) Nat) z))
+ (typeo Delta_Vec '() '(elim z (lambda (x : Nat) Nat) z (lambda (x : Nat) (lambda (ih : Nat) ih)))
+        gamma A)
+
+ #:out #:n 1 #:!c (gamma) '()
+ (type-checko Delta_Vec '() '(elim z (lambda (x : Nat) Nat) z (lambda (x : Nat) (lambda (ih : Nat) ih)))
+        gamma 'Nat))
 
 ;; Prove False
 
