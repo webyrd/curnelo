@@ -3,43 +3,9 @@
  "mk/mk.scm"
  rnrs/base-6
  rnrs/lists-6
- "chko.rkt"
- chk)
+ "chko.rkt")
 
-(define (takeo n args o)
-  (conde
-   [(== n 'lz)
-    (== o '())]
-   [(fresh (n^ B rest o^)
-      (== n `(lsucc ,n^))
-      (== args `(,B . ,rest))
-      (== o `(,B . ,o^))
-      (takeo n^ rest o^))]))
 
-(define (dropo n args o)
-  (conde
-   [(== n 'lz)
-    (== args o)]
-   [(fresh (n^ B rest o^)
-      (== n `(lsucc ,n^))
-      (== args `(,B . ,rest))
-      (dropo n^ rest o))]))
-
-(chko
- #:out #:!c (q) '()
- (takeo 'lz '(1 2 3) q)
-
- #:out #:!c (q) '(1)
- (takeo '(lsucc lz) '(1 2 3) q)
-
- #:out #:!c (q) '(1 2)
- (takeo '(lsucc (lsucc lz)) '(1 2 3) q)
-
- #:out #:!c (q) '(1 2 3)
- (dropo 'lz '(1 2 3) q)
-
- #:out #:!c (q) '(2 3)
- (dropo '(lsucc lz) '(1 2 3) q))
 
 (define (varo e)
   (conde
@@ -129,7 +95,21 @@
                       x
                       e2^
                       gamma^)
-            (evalo gamma^ ebody e^)))]))))
+            (evalo gamma^ ebody e^)))]
+       [(fresh (target^ c args D n A Gamma)
+          (== `(elim ,target ,motive . ,branches) e)
+          (evalo gamma target target^)
+          (applyo c args target^)
+          (ind-entryo D Delta n A Gamma)
+          (mapcaro Gamma Constrs)
+          (list-refo i Constrs c)
+          (list-refo i branches b_i)
+          (assoco c Gamma c_type)
+          (recursive-positionso D c_type c rps)
+          (make-recursiono args rps recursive)
+          (appendo args recursive bargs)
+          (applyo b_i bargs branch)
+          (evalo gamma branch e^))]))))
 
 (chko
  #:out #:!c (q) '(Type lz)
@@ -251,6 +231,9 @@
 
  #:out #:n 2 #:!c (p i D) '((Nat) (z) Vec)
  (inductiveo Delta_Vec '((Vec Nat) z) D p i))
+
+(define (recursive-positionso D type c rps)
+  (let loop ([type type] [rps rps])))
 
 ;; Well-formed inductive declarations stub:
 ;; TODO: Strict positivity
